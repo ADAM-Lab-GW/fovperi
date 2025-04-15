@@ -1,6 +1,10 @@
+
+import tensorflow as tf
+import os
+
 import cv2, numpy as np, os, json, tensorflow as tf, random, shutil, math, time, h5py, SharedArray as sa, argparse;
 from utils.preprocess import printProgressBar, printLoader;
-from keras.backend.tensorflow_backend import set_session;
+
 
 parser = argparse.ArgumentParser();
 parser.add_argument( "--model", default='core50' );
@@ -36,12 +40,24 @@ else:
 
 tf.keras.backend.clear_session();
 tf.config.optimizer.set_jit(True);
-config = tf.ConfigProto(device_count={"CPU": 32});
-config.gpu_options.allow_growth = False;
-config.log_device_placement = False;
-set_session(tf.Session(config=config));
-tf.compat.v1.logging.set_verbosity( tf.compat.v1.logging.FATAL );
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2';
+# Optional: log level for cleaner output
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Suppresses INFO and WARNING logs
+
+# Configure GPU memory growth (False in your original setup)
+gpus = tf.config.list_physical_devices('GPU')
+if gpus:
+    try:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, False)
+    except RuntimeError as e:
+        print(f"Error setting GPU configuration: {e}")
+
+# Set CPU thread parallelism (similar to device_count={"CPU": 32})
+tf.config.threading.set_intra_op_parallelism_threads(32)
+tf.config.threading.set_inter_op_parallelism_threads(32)
+
+# Disable device placement logs
+tf.debugging.set_log_device_placement(False)
 
 from tensorflow.keras import backend as K;
 from xception import build_xception_imagenet, build_xception_core50;

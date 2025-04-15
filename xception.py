@@ -1,13 +1,14 @@
 from tensorflow.keras import layers, models, optimizers, regularizers, losses;
 import numpy as np;
 
-from tensorflow.compat.v2.keras.utils import multi_gpu_model;
 from tensorflow.keras.utils import plot_model;
 import tensorflow as tf;
 
 from tensorflow.python.keras.utils import losses_utils
 
 from tensorflow.keras import backend as K;
+
+
 
 class AttMapMetric( tf.keras.metrics.Metric ):
     def __init__( self, name='att_map', layer=None, shape=(10,10), normalizer=80./9., **kwargs ):
@@ -32,7 +33,7 @@ class AttMapMetric( tf.keras.metrics.Metric ):
         pass;
 
 def build_xception_core50( batch_size=None, add_coords = False, add_dist = False, additional_blocks=8, learning_rate=0.045 ):
-    tf.compat.v1.disable_eager_execution();
+
 
     input_channels = 3;
 
@@ -165,6 +166,21 @@ def build_xception_imagenet(batch_size):
     tf.compat.v1.disable_eager_execution();
 
     img_input = layers.Input( shape=(81,81,3), batch_size=batch_size );
+
+    strategy = tf.distribute.MirroredStrategy()
+    with strategy.scope():
+        model = models.Model(inputs=[img_input], outputs=[x], name='xception')
+        
+        # Add regularizers
+        alpha = 0.00001
+        for layer in model.layers:
+            if isinstance(layer, layers.Conv2D) or isinstance(layer, layers.Dense):
+                layer.add_loss(regularizers.l2(alpha)(layer.kernel))
+            if hasattr(layer, 'bias_regularizer') and layer.use_bias:
+                layer.add_loss(regularizers.l2(alpha)(layer.bias))
+
+        
+
 
     channel_axis = -1;
 
@@ -307,6 +323,7 @@ def build_xception_imagenet(batch_size):
     loss = { 'predictions': tf.keras.losses.CategoricalCrossentropy(reduction=losses_utils.ReductionV2.AUTO), 'last_conv': MyLoss() };
     metrics = { 'predictions': ['acc'], 'last_conv': [] };
 
+        
     model.compile( loss=loss, metrics=metrics, optimizer=optimizer );
 
     model.summary();

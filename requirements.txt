@@ -1,0 +1,9 @@
+tensorflow
+numpy
+SharedArray
+albumentations
+opencv-python
+h5py
+tqdm
+scikit-learn
+numexpr
